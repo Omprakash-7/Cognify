@@ -1,0 +1,19 @@
+{
+  "name": "cognify",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npm --prefix web run dev",
+    "worker": "node worker/index.js",
+    "db:migrate": "node db/migrate.js",
+    "db:seed": "node db/seed.js",
+    "db:check": "node db/check.js",
+    "test:chunk": "node lib/chunk.test.js"
+  },
+  "dependencies": {
+    "pg": "^8.13.1",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.7"
+  }
+}
