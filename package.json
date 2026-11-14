@@ -10,10 +10,12 @@
     "db:seed": "node db/seed.js",
     "db:check": "node db/check.js",
     "llm:check": "node lib/llm-check.js",
+    "storage:check": "node lib/storage-check.js",
     "test:chunk": "node lib/chunk.test.js"
   },
   "dependencies": {
     "@google/genai": "^3.3.0",
+    "@supabase/supabase-js": "^2.119.0",
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.7",
     "pg": "^8.13.1"
