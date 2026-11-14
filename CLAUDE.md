@@ -16,7 +16,7 @@ page), notes, quizzes, flashcards, and doubt tickets.
 - **Database**: PostgreSQL + pgvector (Supabase or Neon), raw SQL via the `pg` package.
 - **Root deps**: `pg`, `bcryptjs`, `dotenv`.
 - **Validation**: Zod for request body and LLM JSON validation (to be added).
-- **Storage**: Supabase Storage or R2 (configured later; env vars present).
+- **Storage**: Supabase Storage with a PRIVATE bucket (`cognify-files`), accessed server-side with secret key; browser uploads use signed upload URLs from our API.
 - **Auth**: JWT-based (configured later).
 - **LLM**: API key based (configured later).
 
@@ -126,4 +126,5 @@ Next.js reads `web/.env.local` (copy of `.env`, gitignored).
 - [x] Setup check passed
 - [x] Health endpoint returns ok
 - [x] Worker polls without errors
+- [x] Storage check passed (lib/storage-check.js)
 - [x] Branch pushed
