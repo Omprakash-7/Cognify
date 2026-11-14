@@ -18,7 +18,7 @@ page), notes, quizzes, flashcards, and doubt tickets.
 - **Validation**: Zod for request body and LLM JSON validation (to be added).
 - **Storage**: Supabase Storage or R2 (configured later; env vars present).
 - **Auth**: JWT-based (configured later).
-- **LLM**: API key based (configured later).
+- **LLM**: Google Gemini API via AI Studio (`@google/genai`).
 
 ## Folder Structure
 
@@ -65,10 +65,19 @@ cognify/
 | `EMBED_DIM`      | Embedding vector dimension (default 1536) |
 | `JWT_SECRET`     | Secret for signing JWTs              |
 | `LLM_API_KEY`    | API key for the LLM provider         |
+| `LLM_CHAT_MODEL` | Gemini chat model (default `gemini-3.5-flash-lite`) |
+| `LLM_EMBED_MODEL`| Gemini embedding model (default `gemini-embedding-001`) |
 | `STORAGE_URL`    | Object storage endpoint              |
 | `STORAGE_KEY`    | Object storage access key            |
 | `STORAGE_BUCKET` | Bucket name (default `cognify-files`)|
 | `WORKER_POLL_MS` | Worker poll interval in ms (default 2000) |
+
+## AI Models
+
+- **Provider**: Google Gemini API via AI Studio (`@google/genai`).
+- **Chat Model**: `gemini-3.5-flash-lite` (configurable via `LLM_CHAT_MODEL`).
+- **Embedding Model**: `gemini-embedding-001` (configurable via `LLM_EMBED_MODEL`).
+- **Dimension**: Embeddings requested at `EMBED_DIM=1536` via `outputDimensionality` because the model default is 3072, above pgvector's 2000-dimension index limit.
 
 Scripts and worker load the root `.env` via `lib/env.js` (dotenv).
 Next.js reads `web/.env.local` (copy of `.env`, gitignored).
