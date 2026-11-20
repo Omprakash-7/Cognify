@@ -17,7 +17,8 @@
     "test:documents": "node tests/documents.test.js",
     "test:isolation": "node tests/isolation.test.js",
     "test:pipeline": "node tests/pipeline.test.js",
-    "test:chat": "node tests/chat.test.js"
+    "test:chat": "node tests/chat.test.js",
+    "test:generation": "node tests/generation.test.js"
   },
   "dependencies": {
     "@google/genai": "^3.3.0",
