@@ -166,9 +166,29 @@ This document specifies the REST and Server-Sent Events (SSE) API implemented in
   { "signedUrl": "https://storage.../signed-download-url" }
   ```
 
+### `POST /api/documents/[id]/generate`
+- **Roles**: Admin, Teacher in batch
+- **Request Body**:
+  ```json
+  {
+    "types": ["summary", "notes", "key_points", "quiz", "flashcards"]
+  }
+  ```
+- **Response `200`**: Enqueues generation jobs for the worker.
+  ```json
+  {
+    "ok": true,
+    "queued": [
+      { "id": "uuid", "jobType": "generate_notes" },
+      { "id": "uuid", "jobType": "generate_quiz" },
+      { "id": "uuid", "jobType": "generate_flashcards" }
+    ]
+  }
+  ```
+
 ### `POST /api/documents/[id]/reprocess`
 - **Roles**: Admin, Teacher in batch
-- **Response `200`**: Resets document status to `queued` and enqueues new `process_document` job.
+- **Response `200`**: Resets document status to `processing`, marks existing `generated_items` as `is_stale = true`, and enqueues new `process_document` job.
 
 ### `DELETE /api/documents/[id]`
 - **Roles**: Admin, Teacher in batch
