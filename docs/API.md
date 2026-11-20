@@ -1,6 +1,18 @@
-# Cognify API Documentation (Phases 1–4)
+# Cognify Complete API Specification
 
-This document specifies the REST and Server-Sent Events (SSE) API implemented in Cognify across Phases 1 through 4.
+This document specifies the REST and Server-Sent Events (SSE) API implemented across the Cognify platform (Phases 1 through 8).
+
+## System Health
+
+### `GET /api/health`
+- **Roles**: Public
+- **Response `200`**:
+  ```json
+  {
+    "status": "ok",
+    "dbTime": "2026-11-21T00:00:00.000Z"
+  }
+  ```
 
 ## General Conventions
 - **Base URL**: `/api`

@@ -1,145 +1,54 @@
-# CLAUDE.md — Cognify Project Context
+# CLAUDE.md — Cognify Backend Context
 
-## Project Description
+Multi-tenant AI study platform: teachers upload study material (PDF/PPTX/DOCX/TXT); worker parses, chunks, embeds (Gemini 1536-dim), and generates notes/quizzes/flashcards as drafts; teachers review; students access cited chat (SSE + RRF), quizzes (server scoring), and tickets; teachers/admins get analytics.
 
-Cognify is an AI-powered study platform for coaching institutes (multi-tenant).
-Teachers upload study material (PDF/PPTX/DOCX/TXT); the system parses, chunks,
-and embeds content, then auto-generates notes, key points, quizzes, and flashcards
-as drafts. Teachers review and approve; students access cited chat (source file +
-page), notes, quizzes, flashcards, and doubt tickets.
+## Tech Stack
+- **Runtime & DB**: Node.js ESM, Next.js 16 App Router (`web/`), PostgreSQL + pgvector, raw SQL (`$1, $2`), private Supabase bucket.
+- **AI**: Gemini (`gemini-3.5-flash-lite`, `gemini-embedding-001` at 1536 dims).
+- **Worker**: `worker/index.js` polling `jobs` table (no Redis/BullMQ).
 
-## Stack & Decisions
+## Core Security & Tenancy Rules
+- `institute_id` and role come strictly from verified JWT cookie (`cognify_token`), NEVER from request body/query/params.
+- Cross-institute or non-member access returns **404**, never 403 or 401 (prevents enumeration).
+- Students see `generated_items` ONLY when `status = 'approved' AND is_stale = false`.
+- Parameterized SQL only (`lib/db.js`). Secrets never logged or exposed. Passwords hashed with bcrypt (10 rounds).
 
-- **Language**: Plain JavaScript, ESM (`"type": "module"`). No TypeScript. No Python. No ORM.
-- **Web**: Next.js App Router (JavaScript, Tailwind CSS, no `src/` dir, import alias `@/*`) in `web/`.
-- **Worker**: Separate Node.js process in `worker/` that polls the `jobs` table (no Redis/BullMQ).
-- **Database**: PostgreSQL + pgvector (Supabase or Neon), raw SQL via the `pg` package.
-- **Root deps**: `pg`, `bcryptjs`, `dotenv`.
-- **Validation**: Zod for request body and LLM JSON validation (to be added).
-- **Storage**: Supabase Storage with a PRIVATE bucket (`cognify-files`), accessed server-side with secret key; browser uploads use signed upload URLs from our API.
-- **Auth**: JWT-based (configured later).
-- **LLM**: Google Gemini API via AI Studio (`@google/genai`).
+## Roles & Permissions Matrix
+| Endpoint / Resource | Admin | Teacher | Student | Notes |
+| :--- | :---: | :---: | :---: | :--- |
+| `POST /api/auth/login`, `logout`, `me` | ✓ | ✓ | ✓ | Generic error, rate limit 5 fails/15m |
+| `POST /api/users`, `GET /api/users` | ✓ | Read | ✗ | Admin creates users in institute |
+| `POST /api/batches`, `GET /api/batches` | ✓ | Create/Read | Read | Students see only enrolled batches |
+| `POST /api/batches/[id]/members` | ✓ | Add Student | ✗ | Teachers cannot add teachers or remove last teacher |
+| `POST /api/batches/[id]/documents` | ✓ | In batch | ✗ | Upload PDF/PPTX/DOCX/TXT <=25MB |
+| `POST /api/documents/[id]/generate`| ✓ | In batch | ✗ | Enqueue generation jobs |
+| `GET /api/documents/[id]/items` | All | All | Approved | Students never see drafts/stale |
+| `PATCH/DELETE /api/items/[id]` | ✓ | In batch | ✗ | Edit content (zod checked), delete drafts |
+| `POST /api/items/[id]/approve\|reject` | ✓ | In batch | ✗ | Sets review status |
+| `POST /api/batches/[id]/chat` | ✓ | In batch | In batch | SSE stream with [n] citations or fallback |
+| `GET /api/quizzes/[id]` | ✓ | In batch | In batch | Correct answers stripped for students |
+| `POST /api/quizzes/[id]/attempt` | ✗ | ✗ | In batch | Server-side scoring, writes `quiz_attempts` |
+| `POST /api/batches/[id]/tickets` | ✓ | In batch | In batch | Creates doubt ticket |
+| `POST /api/tickets/[id]/answer` | ✓ | In batch | ✗ | Sets status 'answered', answered_by |
+| `POST /api/tickets/[id]/close` | ✓ | In batch | Owner | Owner or teacher can close |
+| `GET /api/batches/[id]/analytics` | ✓ | In batch | ✗ | Aggregates, hardest questions, student progress |
+| `GET /api/analytics/institute` | ✓ | ✗ | ✗ | Per-batch totals & institute stats |
 
-## Folder Structure
-
-```
-cognify/
-├── CLAUDE.md, README.md, .gitignore, .env.example, package.json, setup.sh
-├── web/           Next.js App Router app
-├── worker/        Background job processor (index.js, handlers.js)
-├── db/            schema.sql, migrate.js, seed.js, check.js
-├── lib/           env.js, db.js, vector.js, chunk.js, chunk.test.js
-└── docs/          Documentation (.gitkeep)
-```
-
-## Database Tables (11)
-
-1. **institutes** — tenants
-2. **users** — all users with role (admin/teacher/student)
-3. **batches** — classes/sections within an institute
-4. **batch_members** — many-to-many (batch ↔ user)
-5. **documents** — uploaded files with processing status
-6. **chunks** — text chunks with pgvector embeddings and tsvector full-text search
-7. **generated_items** — AI-generated content (notes, quizzes, flashcards) with review status
-8. **jobs** — background job queue
-9. **chat_messages** — cited chat history
-10. **quiz_attempts** — student quiz scores
-11. **tickets** — doubt resolution tickets
-
-## Tenant Isolation Rules
-
-- Every table carries `institute_id` (`batch_members` is scoped via its batch).
-- Every query filters by `institute_id` from the JWT, **never** from request input.
-- Students see only their batches (via `batch_members`).
-- Students see `generated_items` only when `status = 'approved' AND is_stale = false`.
-- Retrieval filters `institute_id` and `batch_id` **BEFORE** vector search.
-- v1 uses `scope = 'batch'` only. Future `scope = 'personal'` = `owner_id`'s private notes, never visible to teachers/admins.
-- **Parameterized SQL only** — never interpolate user input into queries.
-- A Rival Institute user must **never** read Demo Institute data.
-
-## Environment Variables
-
-| Variable         | Description                          |
-| ---------------- | ------------------------------------ |
-| `DATABASE_URL`   | PostgreSQL connection string         |
-| `EMBED_DIM`      | Embedding vector dimension (default 1536) |
-| `JWT_SECRET`     | Secret for signing JWTs              |
-| `LLM_API_KEY`    | API key for the LLM provider         |
-| `LLM_CHAT_MODEL` | Gemini chat model (default `gemini-3.5-flash-lite`) |
-| `LLM_EMBED_MODEL`| Gemini embedding model (default `gemini-embedding-001`) |
-| `STORAGE_URL`    | Object storage endpoint              |
-| `STORAGE_KEY`    | Object storage access key            |
-| `STORAGE_BUCKET` | Bucket name (default `cognify-files`)|
-| `WORKER_POLL_MS` | Worker poll interval in ms (default 2000) |
-
-## AI Models
-
-- **Provider**: Google Gemini API via AI Studio (`@google/genai`).
-- **Chat Model**: `gemini-3.5-flash-lite` (configurable via `LLM_CHAT_MODEL`).
-- **Embedding Model**: `gemini-embedding-001` (configurable via `LLM_EMBED_MODEL`).
-- **Dimension**: Embeddings requested at `EMBED_DIM=1536` via `outputDimensionality` because the model default is 3072, above pgvector's 2000-dimension index limit.
-
-Scripts and worker load the root `.env` via `lib/env.js` (dotenv).
-Next.js reads `web/.env.local` (copy of `.env`, gitignored).
-
-## Coding Conventions
-
-- JavaScript only, ESM (`import`/`export`).
-- JSDoc on every exported function in `lib/`.
-- ESLint + Prettier defaults.
-- Zod for request body and LLM JSON validation.
-- Branch per feature + pull request + one reviewer.
-- Commit daily; never commit `.env`.
-- Raw SQL with parameterized queries only (no ORM).
-
-## Team Roles
-
-| Member | Responsibility                                                        |
-| ------ | --------------------------------------------------------------------- |
-| A      | Frontend — web pages, review screen, chat UI                          |
-| B      | Backend — API routes, auth, upload, quiz scoring                      |
-| C      | AI pipeline — worker, parsing, chunking, embeddings, prompts          |
-| D      | Database + quality — db/, storage, deploy, isolation tests, docs      |
-
-## Milestones
-
-| Date       | Day | Milestone                                            |
-| ---------- | --- | ---------------------------------------------------- |
-| Fri 13 Nov | 1   | Project setup                                        |
-| Sat 14 Nov | 2   | Auth, roles, batches, parser tests                   |
-| Sun 15 Nov | 3   | Upload, worker, parsing                              |
-| Mon 16 Nov | 4   | Chunks + embeddings                                  |
-| Tue 17 Nov | 5   | Cited chat MVP                                       |
-| Wed 18 Nov | 6   | Notes + key points                                   |
-| Thu 19 Nov | 7   | Quizzes, flashcards, review screen                   |
-| Fri 20 Nov | 8   | Student views                                        |
-| Sat 21 Nov | 9   | Analytics, tickets, isolation test                   |
-| Sun 22 Nov | 10  | Deploy + polish                                      |
-| Mon 23 Nov | 11  | Freeze at noon, docs, demo                           |
-| Tue 24 Nov | 12  | Submit                                               |
+## Scripts
+- `npm run dev`: Next.js web app (`web/`)
+- `npm run worker` / `npm run worker:once`: Background job processor
+- `npm run db:migrate` / `db:seed` / `db:check`: Database management
+- `npm run llm:check` / `npm run storage:check`: Service verification
+- `npm run test:chunk` / `test:isolation` / `test:documents` / `test:pipeline` / `test:chat` / `test:generation` / `test:review` / `test:tickets`
+- `npm run test:all`: Run complete regression test suite
+- `npm run demo:content`: Populate sample demo documents (idempotent, run only when asked)
 
 ## Status
-
-- [x] Repository cloned and branch created
-- [x] Folder structure created
-- [x] Root package.json with scripts
-- [x] .env.example and .gitignore
-- [x] lib/ — env.js, db.js, vector.js, chunk.js, chunk.test.js
-- [x] db/ — schema.sql, migrate.js, seed.js, check.js
-- [x] worker/ — index.js, handlers.js
-- [x] web/ — Next.js app with health endpoint
-- [x] CLAUDE.md, README.md, setup.sh
-- [x] Chunk tests pass
-- [x] Database migration verified
-- [x] Seed data loaded
-- [x] Setup check passed
-- [x] Health endpoint returns ok
-- [x] Worker polls without errors
-- [x] Storage check passed (lib/storage-check.js)
-- [x] Phase 1: Auth, roles, batches, isolation tests pass
-- [x] Phase 2: Documents & upload pass (lib/storage.js, tests/documents.test.js)
-- [x] Phase 3: Worker pipeline & parsers pass (lib/parsers/, worker/index.js --once, tests/pipeline.test.js)
-- [x] Phase 4: Cited chat with SSE & RRF pass (lib/retrieval.js, tests/chat.test.js)
-- [x] Phase 5: Generation & grounding engine pass (lib/grounding.js, tests/generation.test.js)
-- [x] Phase 6: Review & student study API pass (tests/review.test.js)
-- [x] Phase 7: Doubt tickets & analytics pass (tests/tickets-analytics.test.js)
+- [x] Phase 1: Auth, Roles, Batches, Isolation (`tests/isolation.test.js` - 12/12)
+- [x] Phase 2: Documents & Upload (`tests/documents.test.js` - 6/6)
+- [x] Phase 3: Worker Pipeline & Parsers (`tests/pipeline.test.js` - 7/7)
+- [x] Phase 4: Cited Chat, Retrieval, RRF (`tests/chat.test.js` - 7/7)
+- [x] Phase 5: Generation & Grounding Engine (`tests/generation.test.js` - 9/9)
+- [x] Phase 6: Review & Student Study API (`tests/review.test.js` - 9/9)
+- [x] Phase 7: Doubt Tickets & Analytics (`tests/tickets-analytics.test.js` - 9/9)
+- [x] Phase 8: Hardening, Demo Content, Deploy Docs & Final Schema ERD
