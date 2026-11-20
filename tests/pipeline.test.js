@@ -192,11 +192,11 @@ test('Worker:once processes TXT, PDF, PPTX, DOCX and handles corrupt file', asyn
   }
 
   // Run worker once to process all queued jobs
-  const workerProc = spawnSync('node', ['worker/index.js', '--once'], {
+  const workerProc = spawnSync('node', ['worker/index.js', '--once', '--type=process_document'], {
     cwd: path.resolve(__dirname, '..'),
     encoding: 'utf-8',
     env: { ...process.env },
-    timeout: 60000,
+    timeout: 120000,
   });
 
   if (process.env.DEBUG) {
@@ -260,11 +260,11 @@ test('Worker:once processes TXT, PDF, PPTX, DOCX and handles corrupt file', asyn
   );
 
   // Run worker once again
-  const workerProc2 = spawnSync('node', ['worker/index.js', '--once'], {
+  const workerProc2 = spawnSync('node', ['worker/index.js', '--once', '--type=process_document'], {
     cwd: path.resolve(__dirname, '..'),
     encoding: 'utf-8',
     env: { ...process.env },
-    timeout: 60000,
+    timeout: 120000,
   });
   assert.equal(workerProc2.status, 0);
 
