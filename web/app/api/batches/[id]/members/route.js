@@ -3,9 +3,9 @@
  */
 
 import { z } from 'zod';
-import { requireUser } from '../../../../lib/session.js';
-import { apiError, handleAuthError, checkContentType } from '../../../../lib/api.js';
-import { query } from '../../../../../lib/db.js';
+import { requireUser } from '@/lib/session.js';
+import { apiError, handleAuthError, checkContentType } from '@/lib/api.js';
+import { query } from '@/lib/db.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

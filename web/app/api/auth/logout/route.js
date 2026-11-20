@@ -4,7 +4,8 @@
  */
 
 import { cookies } from 'next/headers';
-import { COOKIE_NAME, cookieOptions } from '../../../lib/session.js';
+import { COOKIE_NAME, cookieOptions } from '@/lib/session.js';
+import { getMissingPrefetchHintPolicy } from 'next/dist/server/app-render/create-transport-tree-from-loader-tree';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

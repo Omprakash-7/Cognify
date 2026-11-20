@@ -2,9 +2,9 @@
  * DELETE /api/batches/[id]/members/[userId] — remove a member from a batch
  */
 
-import { requireUser } from '../../../../../lib/session.js';
-import { apiError, handleAuthError } from '../../../../../lib/api.js';
-import { query } from '../../../../../../lib/db.js';
+import { requireUser } from '@/lib/session.js';
+import { apiError, handleAuthError } from '@/lib/api.js';
+import { query } from '@/lib/db.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

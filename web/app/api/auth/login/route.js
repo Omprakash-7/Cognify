@@ -5,10 +5,10 @@
 
 import { cookies } from 'next/headers';
 import { z } from 'zod';
-import { verifyPassword, hashPassword, signToken } from '../../../../lib/auth.js';
-import { query } from '../../../../lib/db.js';
-import { apiError, checkContentType } from '../../../lib/api.js';
-import { COOKIE_NAME, cookieOptions } from '../../../lib/session.js';
+import { verifyPassword, hashPassword, signToken } from '@/lib/auth.js';
+import { query } from '@/lib/db.js';
+import { apiError, checkContentType } from '@/lib/api.js';
+import { COOKIE_NAME, cookieOptions } from '@/lib/session.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
