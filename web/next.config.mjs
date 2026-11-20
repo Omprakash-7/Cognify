@@ -9,7 +9,7 @@ const nextConfig = {
       },
     },
   },
-  serverExternalPackages: ['pg'],
+  serverExternalPackages: ['pg', 'bcryptjs', 'jsonwebtoken'],
   experimental: {
     externalDir: true,
   },
