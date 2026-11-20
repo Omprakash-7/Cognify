@@ -5,7 +5,9 @@
  * runs the matching handler, marks done/failed, and sleeps when idle.
  * Graceful shutdown on SIGINT / SIGTERM.
  *
- * Usage: node worker/index.js
+ * Usage:
+ *   node worker/index.js         (continuous polling)
+ *   node worker/index.js --once  (drain currently queued jobs and exit)
  */
 
 // Load environment before anything else
@@ -15,6 +17,8 @@ import { query, closePool } from '../lib/db.js';
 import { handlers } from './handlers.js';
 
 const POLL_MS = parseInt(process.env.WORKER_POLL_MS || '2000', 10);
+const ONCE_MODE = process.argv.includes('--once');
+
 let running = true;
 let processingJob = false;
 
@@ -61,13 +65,22 @@ function sleep(ms) {
 }
 
 async function pollLoop() {
-  console.log(`Worker started (poll every ${POLL_MS}ms)`);
+  if (ONCE_MODE) {
+    console.log('Worker running in --once mode: draining queue…');
+  } else {
+    console.log(`Worker started (poll every ${POLL_MS}ms)`);
+  }
 
   while (running) {
     try {
       const job = await claimJob();
 
       if (!job) {
+        if (ONCE_MODE) {
+          console.log('No more queued jobs. Worker --once exiting.');
+          await closePool();
+          process.exit(0);
+        }
         await sleep(POLL_MS);
         continue;
       }
@@ -93,6 +106,10 @@ async function pollLoop() {
     } catch (err) {
       console.error('Poll loop error:', err.message);
       processingJob = false;
+      if (ONCE_MODE) {
+        await closePool();
+        process.exit(1);
+      }
       await sleep(POLL_MS);
     }
   }

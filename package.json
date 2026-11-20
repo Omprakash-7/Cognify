@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "npm --prefix web run dev",
     "worker": "node worker/index.js",
+    "worker:once": "node worker/index.js --once",
+    "start:worker": "node worker/index.js",
     "db:migrate": "node db/migrate.js",
     "db:seed": "node db/seed.js",
     "db:check": "node db/check.js",
@@ -13,7 +15,8 @@
     "storage:check": "node lib/storage-check.js",
     "test:chunk": "node lib/chunk.test.js",
     "test:documents": "node tests/documents.test.js",
-    "test:isolation": "node tests/isolation.test.js"
+    "test:isolation": "node tests/isolation.test.js",
+    "test:pipeline": "node tests/pipeline.test.js"
   },
   "dependencies": {
     "@google/genai": "^3.3.0",
@@ -21,7 +24,10 @@
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.7",
     "jsonwebtoken": "^9.0.3",
+    "jszip": "^3.10.2",
+    "mammoth": "^1.13.0",
     "pg": "^8.13.1",
+    "unpdf": "^2.2.1",
     "zod": "^4.6.7"
   }
 }
