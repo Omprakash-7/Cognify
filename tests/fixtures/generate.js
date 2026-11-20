@@ -11,6 +11,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export async function createFixtures() {
   const dir = __dirname;
+  const writeIfMissing = (file, data, enc) => {
+    if (!fs.existsSync(file)) {
+      if (enc) fs.writeFileSync(file, data, enc);
+      else fs.writeFileSync(file, data);
+    }
+  };
 
   // 1. TXT fixture
   const txtContent = `Newton's First Law
@@ -22,7 +28,7 @@ The acceleration of an object depends on the mass of the object and the amount o
 Newton's Third Law
 Whenever one object exerts a force on another object, the second object exerts an equal and opposite force on the first. For every action, there is an equal and opposite reaction.`;
 
-  fs.writeFileSync(path.join(dir, 'sample.txt'), txtContent, 'utf-8');
+  writeIfMissing(path.join(dir, 'sample.txt'), txtContent, 'utf-8');
 
   // 2. PDF fixture (valid 1-page PDF with text)
   const validPdf = `%PDF-1.4
@@ -46,7 +52,7 @@ startxref
 431
 %%EOF`;
 
-  fs.writeFileSync(path.join(dir, 'sample.pdf'), Buffer.from(validPdf));
+  writeIfMissing(path.join(dir, 'sample.pdf'), Buffer.from(validPdf));
 
   // 3. Scanned PDF (valid PDF structure but no text stream)
   const scannedPdf = `%PDF-1.4
@@ -67,33 +73,37 @@ startxref
 254
 %%EOF`;
 
-  fs.writeFileSync(path.join(dir, 'scanned.pdf'), Buffer.from(scannedPdf));
+  writeIfMissing(path.join(dir, 'scanned.pdf'), Buffer.from(scannedPdf));
 
   // 4. Corrupt file
-  fs.writeFileSync(path.join(dir, 'corrupt.pdf'), Buffer.from('NOT A PDF FILE AT ALL'));
+  writeIfMissing(path.join(dir, 'corrupt.pdf'), Buffer.from('NOT A PDF FILE AT ALL'));
 
   // 5. PPTX fixture
-  const pptxZip = new JSZip();
-  pptxZip.file('[Content_Types].xml', '<Types></Types>');
-  pptxZip.file(
-    'ppt/slides/slide1.xml',
-    '<p:sp><p:txBody><a:p><a:r><a:t>Slide 1: Kinetic and Potential Energy Concepts</a:t></a:r></a:p></p:txBody></p:sp>'
-  );
-  pptxZip.file(
-    'ppt/slides/slide2.xml',
-    '<p:sp><p:txBody><a:p><a:r><a:t>Slide 2: Conservation of Mechanical Energy Principles</a:t></a:r></a:p></p:txBody></p:sp>'
-  );
-  const pptxBuf = await pptxZip.generateAsync({ type: 'nodebuffer' });
-  fs.writeFileSync(path.join(dir, 'sample.pptx'), pptxBuf);
+  if (!fs.existsSync(path.join(dir, 'sample.pptx'))) {
+    const pptxZip = new JSZip();
+    pptxZip.file('[Content_Types].xml', '<Types></Types>');
+    pptxZip.file(
+      'ppt/slides/slide1.xml',
+      '<p:sp><p:txBody><a:p><a:r><a:t>Slide 1: Kinetic and Potential Energy Concepts</a:t></a:r></a:p></p:txBody></p:sp>'
+    );
+    pptxZip.file(
+      'ppt/slides/slide2.xml',
+      '<p:sp><p:txBody><a:p><a:r><a:t>Slide 2: Conservation of Mechanical Energy Principles</a:t></a:r></a:p></p:txBody></p:sp>'
+    );
+    const pptxBuf = await pptxZip.generateAsync({ type: 'nodebuffer' });
+    fs.writeFileSync(path.join(dir, 'sample.pptx'), pptxBuf);
+  }
 
   // 6. DOCX fixture
-  const docxZip = new JSZip();
-  docxZip.file(
-    'word/document.xml',
-    '<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Thermodynamics: Heat and Work exchange in closed physical systems.</w:t></w:r></w:p></w:body></w:document>'
-  );
-  const docxBuf = await docxZip.generateAsync({ type: 'nodebuffer' });
-  fs.writeFileSync(path.join(dir, 'sample.docx'), docxBuf);
+  if (!fs.existsSync(path.join(dir, 'sample.docx'))) {
+    const docxZip = new JSZip();
+    docxZip.file(
+      'word/document.xml',
+      '<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Thermodynamics: Heat and Work exchange in closed physical systems.</w:t></w:r></w:p></w:body></w:document>'
+    );
+    const docxBuf = await docxZip.generateAsync({ type: 'nodebuffer' });
+    fs.writeFileSync(path.join(dir, 'sample.docx'), docxBuf);
+  }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
