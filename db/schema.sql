@@ -206,3 +206,6 @@ CREATE TABLE IF NOT EXISTS tickets (
 
 CREATE INDEX IF NOT EXISTS idx_tickets_batch ON tickets(batch_id);
 CREATE INDEX IF NOT EXISTS idx_tickets_student ON tickets(student_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_institute_status ON tickets(institute_id, status);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_batch_created ON chat_messages(batch_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_quiz_attempts_institute ON quiz_attempts(institute_id);
