@@ -139,3 +139,4 @@ Next.js reads `web/.env.local` (copy of `.env`, gitignored).
 - [x] Phase 1: Auth, roles, batches, isolation tests pass
 - [x] Phase 2: Documents & upload pass (lib/storage.js, tests/documents.test.js)
 - [x] Phase 3: Worker pipeline & parsers pass (lib/parsers/, worker/index.js --once, tests/pipeline.test.js)
+- [x] Phase 4: Cited chat with SSE & RRF pass (lib/retrieval.js, tests/chat.test.js)
