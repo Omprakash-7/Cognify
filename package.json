@@ -12,6 +12,7 @@
     "llm:check": "node lib/llm-check.js",
     "storage:check": "node lib/storage-check.js",
     "test:chunk": "node lib/chunk.test.js",
+    "test:documents": "node tests/documents.test.js",
     "test:isolation": "node tests/isolation.test.js"
   },
   "dependencies": {
