@@ -367,3 +367,215 @@ This document specifies the REST and Server-Sent Events (SSE) API implemented in
     ]
   }
   ```
+
+---
+
+## 7. Doubt Tickets & Analytics
+
+### `POST /api/batches/[id]/tickets`
+- **Roles**: Any member of the batch (teacher or student), or Admin
+- **Request Body**:
+  ```json
+  {
+    "question": "How do I calculate terminal velocity?"
+  }
+  ```
+- **Response `201`**:
+  ```json
+  {
+    "ticket": {
+      "id": "uuid",
+      "institute_id": "uuid",
+      "batch_id": "uuid",
+      "student_id": "uuid",
+      "question": "How do I calculate terminal velocity?",
+      "status": "open",
+      "created_at": "timestamp"
+    }
+  }
+  ```
+
+### `GET /api/tickets`
+- **Roles**: Authenticated caller
+  - Students see only their own tickets.
+  - Teachers see tickets for batches they belong to.
+  - Admins see all tickets in the institute.
+- **Query Params**:
+  - `status`: `open` | `answered` | `closed` (optional)
+  - `batchId`: filter by batch (optional)
+  - `limit`, `offset`: pagination (default 50, max 100)
+- **Response `200`**:
+  ```json
+  {
+    "tickets": [
+      {
+        "id": "uuid",
+        "institute_id": "uuid",
+        "batch_id": "uuid",
+        "student_id": "uuid",
+        "question": "...",
+        "status": "open",
+        "answer": null,
+        "answered_by": null,
+        "created_at": "timestamp",
+        "answered_at": null,
+        "batch_name": "Physics Batch A",
+        "student_name": "Student One",
+        "student_email": "student@test.local",
+        "answered_by_name": null
+      }
+    ]
+  }
+  ```
+
+### `POST /api/tickets/[id]/answer`
+- **Roles**: Teacher in that ticket's batch, or Admin
+- **Request Body**:
+  ```json
+  {
+    "answer": "Terminal velocity is reached when drag force equals weight: v_t = sqrt(2mg / (rho * A * Cd))."
+  }
+  ```
+- **Response `200`**:
+  ```json
+  {
+    "ticket": {
+      "id": "uuid",
+      "status": "answered",
+      "answer": "...",
+      "answered_by": "uuid",
+      "answered_at": "timestamp"
+    }
+  }
+  ```
+
+### `POST /api/tickets/[id]/close`
+- **Roles**: Ticket owner (student who created it), Teacher in that batch, or Admin
+- **Response `200`**:
+  ```json
+  {
+    "ticket": {
+      "id": "uuid",
+      "status": "closed"
+    }
+  }
+  ```
+
+### `GET /api/batches/[id]/analytics`
+- **Roles**: Teacher in that batch, or Admin
+- **Response `200`**:
+  ```json
+  {
+    "batchId": "uuid",
+    "batchName": "Physics 101",
+    "members": {
+      "total": 25,
+      "students": 23,
+      "teachers": 2
+    },
+    "documents": {
+      "total": 5,
+      "byStatus": {
+        "ready": 4,
+        "processing": 0,
+        "failed": 1
+      }
+    },
+    "items": {
+      "total": 12,
+      "byType": {
+        "summary": 2,
+        "notes": 3,
+        "key_points": 2,
+        "quiz": 3,
+        "flashcards": 2
+      },
+      "byStatus": {
+        "draft": 2,
+        "approved": 10,
+        "rejected": 0
+      }
+    },
+    "quizzes": {
+      "totalAttempts": 45,
+      "averageScorePct": 78.5,
+      "attemptsPerQuiz": [
+        {
+          "quiz_id": "uuid",
+          "title": "Laws of Motion Quiz",
+          "attempts_count": 25,
+          "avg_score_pct": 82.0
+        }
+      ],
+      "hardestQuestions": [
+        {
+          "quizId": "uuid",
+          "quizTitle": "Laws of Motion Quiz",
+          "questionIndex": 2,
+          "question": "Which law explains rocket propulsion?",
+          "attemptsCount": 25,
+          "correctCount": 5,
+          "correctPercentage": 20
+        }
+      ]
+    },
+    "studentProgress": [
+      {
+        "user_id": "uuid",
+        "name": "Student One",
+        "email": "student1@test.local",
+        "attempts_count": 3,
+        "avg_score_pct": 85.0
+      }
+    ],
+    "chatActivity": [
+      { "date": "2026-11-20", "count": 14 }
+    ],
+    "unansweredQuestions": [
+      {
+        "message_id": "uuid",
+        "user_id": "uuid",
+        "assistant_response": "I couldn't find this...",
+        "preceding_question": "What is Hawking radiation?",
+        "created_at": "timestamp"
+      }
+    ],
+    "openTicketsCount": 2
+  }
+  ```
+
+### `GET /api/analytics/institute`
+- **Roles**: Institute Admin only
+- **Response `200`**:
+  ```json
+  {
+    "batches": [
+      {
+        "batchId": "uuid",
+        "batchName": "Physics 101",
+        "memberCount": 25,
+        "studentCount": 23,
+        "teacherCount": 2,
+        "documentCount": 5,
+        "itemCount": 12,
+        "quizAttemptCount": 45,
+        "chatMessageCount": 120,
+        "ticketCount": 6,
+        "openTicketCount": 2
+      }
+    ],
+    "instituteTotals": {
+      "batchCount": 1,
+      "memberCount": 25,
+      "studentCount": 23,
+      "teacherCount": 2,
+      "documentCount": 5,
+      "itemCount": 12,
+      "quizAttemptCount": 45,
+      "chatMessageCount": 120,
+      "ticketCount": 6,
+      "openTicketCount": 2
+    }
+  }
+  ```
+

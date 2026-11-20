@@ -19,7 +19,8 @@
     "test:pipeline": "node tests/pipeline.test.js",
     "test:chat": "node tests/chat.test.js",
     "test:generation": "node tests/generation.test.js",
-    "test:review": "node tests/review.test.js"
+    "test:review": "node tests/review.test.js",
+    "test:tickets": "node tests/tickets-analytics.test.js"
   },
   "dependencies": {
     "@google/genai": "^3.3.0",

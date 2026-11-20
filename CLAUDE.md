@@ -142,3 +142,4 @@ Next.js reads `web/.env.local` (copy of `.env`, gitignored).
 - [x] Phase 4: Cited chat with SSE & RRF pass (lib/retrieval.js, tests/chat.test.js)
 - [x] Phase 5: Generation & grounding engine pass (lib/grounding.js, tests/generation.test.js)
 - [x] Phase 6: Review & student study API pass (tests/review.test.js)
+- [x] Phase 7: Doubt tickets & analytics pass (tests/tickets-analytics.test.js)
