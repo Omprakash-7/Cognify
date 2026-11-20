@@ -136,4 +136,5 @@ Next.js reads `web/.env.local` (copy of `.env`, gitignored).
 - [x] Health endpoint returns ok
 - [x] Worker polls without errors
 - [x] Storage check passed (lib/storage-check.js)
+- [x] Phase 1: Auth, roles, batches, isolation tests pass
 - [x] Branch pushed
