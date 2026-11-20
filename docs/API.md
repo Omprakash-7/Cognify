@@ -254,3 +254,116 @@ This document specifies the REST and Server-Sent Events (SSE) API implemented in
     "pagination": { "total": 12, "limit": 50, "offset": 0 }
   }
   ```
+
+---
+
+## 5. Item Review & Content Management
+
+### `GET /api/documents/[id]/items`
+- **Roles**: Batch member or Admin
+- **Visibility**:
+  - Teachers / Admins: sees all items (draft, approved, rejected, stale).
+  - Students: approved and non-stale items only (`correctIndex` stripped for quizzes).
+- **Response `200`**: `{ "items": [...] }`
+
+### `GET /api/batches/[id]/items?type=`
+- **Roles**: Batch member or Admin
+- **Query Params**: `?type=summary|notes|key_points|quiz|flashcards`
+- **Visibility**: Same student vs teacher rules.
+- **Response `200`**: `{ "items": [...] }`
+
+### `GET /api/items/[id]`
+- **Roles**: Batch member or Admin
+- **Visibility**: Students can only view approved, non-stale items (`correctIndex` stripped).
+- **Response `200`**: `{ "item": { ... } }`
+
+### `PATCH /api/items/[id]`
+- **Roles**: Admin, Teacher in batch
+- **Request Body**: `{ "title": "New Title", "content": { ... } }` (validated against item type Zod schema).
+- **Response `200`**: `{ "item": { ... } }`
+
+### `POST /api/items/[id]/approve`
+- **Roles**: Admin, Teacher in batch
+- **Response `200`**: Updates item `status='approved'`, records `reviewed_by` and `reviewed_at`.
+
+### `POST /api/items/[id]/reject`
+- **Roles**: Admin, Teacher in batch
+- **Response `200`**: Updates item `status='rejected'`, records `reviewed_by` and `reviewed_at`.
+
+### `DELETE /api/items/[id]`
+- **Roles**: Admin, Teacher in batch
+- **Rules**: Only draft items can be deleted (returns 400 if item is approved/rejected).
+- **Response `200`**: `{ "ok": true }`
+
+---
+
+## 6. Student Quizzes & Progress API
+
+### `GET /api/quizzes/[id]`
+- **Roles**: Batch member or Admin
+- **Rules**: Approved quizzes only for students. Questions return WITHOUT `correctIndex` or `explanation` to prevent cheating.
+- **Response `200`**:
+  ```json
+  {
+    "quiz": {
+      "id": "uuid",
+      "title": "Laws of Motion Quiz",
+      "questions": [
+        {
+          "question": "What is Newton's Second Law?",
+          "options": ["F = ma", "E = mc^2", "V = IR", "P = IV"],
+          "difficulty": "easy",
+          "sourcePage": 1
+        }
+      ]
+    }
+  }
+  ```
+
+### `POST /api/quizzes/[id]/attempt`
+- **Roles**: Student, Teacher, Admin in batch
+- **Request Body**:
+  ```json
+  {
+    "answers": [0, 1, null, 2]
+  }
+  ```
+- **Rules**: Server-side scoring verifies answers against `correctIndex`. Persists attempt to `quiz_attempts`.
+- **Response `200`**:
+  ```json
+  {
+    "attemptId": "uuid",
+    "score": 3,
+    "total": 4,
+    "results": [
+      {
+        "correct": true,
+        "correctIndex": 0,
+        "explanation": "F = ma relates force and acceleration.",
+        "sourcePage": 1
+      }
+    ]
+  }
+  ```
+
+### `GET /api/me/attempts`
+- **Roles**: Authenticated caller
+- **Response `200`**: List of caller's own quiz attempts with scores and timestamps.
+
+### `GET /api/me/progress`
+- **Roles**: Authenticated caller
+- **Response `200`**:
+  ```json
+  {
+    "progress": [
+      {
+        "quizId": "uuid",
+        "quizTitle": "Laws of Motion Quiz",
+        "bestScore": 4,
+        "lastScore": 3,
+        "totalQuestions": 4,
+        "attemptsCount": 2
+      }
+    ]
+  }
+  ```

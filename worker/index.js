@@ -18,22 +18,31 @@ import { handlers } from './handlers.js';
 
 const POLL_MS = parseInt(process.env.WORKER_POLL_MS || '2000', 10);
 const ONCE_MODE = process.argv.includes('--once');
+const TYPE_FILTER = process.argv.find((a) => a.startsWith('--type='))?.split('=')[1] || null;
 
 let running = true;
 let processingJob = false;
 
 async function claimJob() {
+  const params = [];
+  let typeClause = '';
+  if (TYPE_FILTER) {
+    params.push(TYPE_FILTER);
+    typeClause = `AND job_type = $${params.length}`;
+  }
+
   const { rows } = await query(
     `UPDATE jobs
      SET status = 'running', started_at = now(), attempts = attempts + 1
      WHERE id = (
        SELECT id FROM jobs
-       WHERE status = 'queued'
+       WHERE status = 'queued' ${typeClause}
        ORDER BY created_at
        FOR UPDATE SKIP LOCKED
        LIMIT 1
      )
-     RETURNING *`
+     RETURNING *`,
+    params
   );
   return rows[0] || null;
 }
