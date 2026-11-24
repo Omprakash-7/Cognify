@@ -15,7 +15,7 @@
  */
 
 import { requireUser } from '@/lib/session.js';
-import { apiError, handleAuthError } from '@/lib/api.js';
+import { apiError, handleAuthError, formatStudentProgress } from '@/lib/api.js';
 import { query } from '@/lib/db.js';
 import { getBatchWithAccess } from '@/lib/batches.js';
 
@@ -166,15 +166,21 @@ export async function GET(req, { params }) {
 
     const hardestQuestions = Array.from(questionStatsMap.values())
       .filter((q) => q.attemptsCount > 0)
-      .map((q) => ({
-        quizId: q.quizId,
-        quizTitle: q.quizTitle,
-        questionIndex: q.questionIndex,
-        question: q.question,
-        attemptsCount: q.attemptsCount,
-        correctCount: q.correctCount,
-        correctPercentage: Math.round((q.correctCount / q.attemptsCount) * 100),
-      }))
+      .map((q) => {
+        const errorRate = q.attemptsCount > 0 ? (q.attemptsCount - q.correctCount) / q.attemptsCount : 0;
+        return {
+          quizId: q.quizId,
+          quizTitle: q.quizTitle,
+          questionIndex: q.questionIndex,
+          question: q.question,
+          attemptsCount: q.attemptsCount,
+          correctCount: q.correctCount,
+          correctPercentage: Math.round((q.correctCount / q.attemptsCount) * 100),
+          errorRate,
+          totalAttempts: q.attemptsCount,
+          incorrectCount: q.attemptsCount - q.correctCount,
+        };
+      })
       .sort((a, b) => a.correctPercentage - b.correctPercentage)
       .slice(0, 10);
 
@@ -245,16 +251,49 @@ export async function GET(req, { params }) {
     );
     const openTicketsCount = openTicketsRes.rows[0]?.count || 0;
 
+    const totalTicketsRes = await query(
+      `SELECT COUNT(*)::int AS count
+       FROM tickets
+       WHERE batch_id = $1 AND institute_id = $2`,
+      [batchId, instituteId]
+    );
+    const totalTicketsCount = totalTicketsRes.rows[0]?.count || 0;
+
+    const summary = {
+      avgQuizScore: avgQuizScorePct != null ? avgQuizScorePct / 100 : null,
+      totalAttempts: totalQuizAttempts,
+      totalDocuments: totalDocs,
+      totalGeneratedItems: totalItems,
+      openTickets: openTicketsCount,
+      totalTickets: totalTicketsCount,
+      totalQuizzes: itemsByType.quiz || 0,
+    };
+
+    const studentProgress = formatStudentProgress(studentProgressRes.rows);
+
+    const unansweredQuestions = unansweredRes.rows.map((row) => ({
+      message_id: row.message_id,
+      user_id: row.user_id,
+      assistant_response: row.assistant_response,
+      preceding_question: row.preceding_question,
+      created_at: row.created_at,
+      query: row.preceding_question,
+      count: 1,
+      lastAsked: row.created_at,
+    }));
+
     return Response.json({
       batchId,
       batchName: batch.name,
+      summary,
       members: memberStats,
       documents: documentStats,
       items: itemStats,
       quizzes: quizStats,
-      studentProgress: studentProgressRes.rows,
+      hardestQuestions: quizStats.hardestQuestions,
+      studentProgress,
       chatActivity: chatActivityRes.rows,
-      unansweredQuestions: unansweredRes.rows,
+      unansweredQuestions,
       openTicketsCount,
     });
   } catch (err) {

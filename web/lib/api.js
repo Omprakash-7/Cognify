@@ -75,3 +75,40 @@ export function handleAuthError(err) {
   console.error(err);
   return apiError('INTERNAL_ERROR', 'Internal server error', 500);
 }
+
+/**
+ * Formats student progress rows to ensure uniform camelCase and snake_case properties
+ * so frontend components and API clients always receive stable studentId, studentName,
+ * studentEmail, quizzesAttempted, avgScore, and user_id.
+ * @param {Array<object>} rows
+ * @returns {Array<object>}
+ */
+export function formatStudentProgress(rows = []) {
+  return rows.map((row) => {
+    const userId = row.user_id || row.studentId || row.id;
+    const name = row.studentName || row.name || '';
+    const email = row.studentEmail || row.email || '';
+    const attempts = row.quizzesAttempted ?? row.attempts_count ?? 0;
+    const avgScorePct = row.avg_score_pct !== undefined
+      ? row.avg_score_pct
+      : (row.avgScore !== undefined ? row.avgScore * 100 : 0);
+    const avgScore = row.avgScore !== undefined
+      ? row.avgScore
+      : (row.avg_score_pct !== undefined ? row.avg_score_pct / 100 : 0);
+
+    return {
+      user_id: userId,
+      studentId: userId,
+      id: userId,
+      name,
+      studentName: name,
+      email,
+      studentEmail: email,
+      attempts_count: attempts,
+      quizzesAttempted: attempts,
+      avg_score_pct: avgScorePct,
+      avgScore,
+    };
+  });
+}
+
