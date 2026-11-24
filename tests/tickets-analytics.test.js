@@ -26,6 +26,7 @@ import { dirname, resolve } from 'node:path';
 import '../lib/env.js';
 import { query, closePool } from '../lib/db.js';
 import { hashPassword } from '../lib/auth.js';
+import { formatStudentProgress } from '../web/lib/api.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = 3005;
@@ -688,4 +689,58 @@ test('Institute analytics (GET /api/analytics/institute): Admin only, per-batch 
   assert.equal(data.instituteTotals.quizAttemptCount, 2);
   assert.equal(data.instituteTotals.chatMessageCount, 4);
   assert.equal(data.instituteTotals.openTicketCount, 1);
+});
+
+test('Batch analytics data shape: mock & real analytics response provides documented and frontend fields', async () => {
+  // 1. Test mock fixture mapping
+  const mockRows = [
+    {
+      user_id: '11111111-1111-1111-1111-111111111111',
+      name: 'Rohan Sharma',
+      email: 'rohan@example.com',
+      attempts_count: 5,
+      avg_score_pct: 84.5,
+    },
+  ];
+  const formattedMock = formatStudentProgress(mockRows);
+  assert.equal(formattedMock.length, 1);
+  assert.equal(formattedMock[0].studentId, '11111111-1111-1111-1111-111111111111');
+  assert.equal(formattedMock[0].user_id, '11111111-1111-1111-1111-111111111111');
+  assert.equal(formattedMock[0].studentName, 'Rohan Sharma');
+  assert.equal(formattedMock[0].name, 'Rohan Sharma');
+  assert.equal(formattedMock[0].studentEmail, 'rohan@example.com');
+  assert.equal(formattedMock[0].email, 'rohan@example.com');
+  assert.equal(formattedMock[0].quizzesAttempted, 5);
+  assert.equal(formattedMock[0].attempts_count, 5);
+  assert.equal(formattedMock[0].avg_score_pct, 84.5);
+  assert.equal(formattedMock[0].avgScore, 0.845);
+
+  // 2. Test real API endpoint response
+  const res = await fetch(`${BASE}/api/batches/${global.batchA1Id}/analytics`, {
+    headers: { Cookie: global.teacher1Cookie },
+  });
+  assert.equal(res.status, 200);
+  const data = await res.json();
+
+  assert.ok(Array.isArray(data.studentProgress));
+  assert.ok(data.studentProgress.length >= 1);
+  for (const st of data.studentProgress) {
+    // Must have stable studentId and user_id matching
+    assert.ok(st.studentId, 'studentId must be defined and non-empty');
+    assert.equal(st.studentId, st.user_id);
+    assert.ok(st.studentName, 'studentName must be defined and non-empty');
+    assert.equal(st.studentName, st.name);
+    assert.ok(st.studentEmail, 'studentEmail must be defined and non-empty');
+    assert.equal(st.studentEmail, st.email);
+    assert.equal(typeof st.quizzesAttempted, 'number');
+    assert.equal(st.quizzesAttempted, st.attempts_count);
+    assert.equal(typeof st.avgScore, 'number');
+  }
+
+  // Summary object exists at top level for dashboard cards
+  assert.ok(data.summary);
+  assert.equal(typeof data.summary.totalAttempts, 'number');
+  assert.equal(typeof data.summary.totalDocuments, 'number');
+  assert.equal(typeof data.summary.totalGeneratedItems, 'number');
+  assert.equal(typeof data.summary.openTickets, 'number');
 });

@@ -15,7 +15,17 @@
 
 import '../lib/env.js';
 import { query, closePool } from '../lib/db.js';
-import { uploadFile } from '../lib/storage.js';
+import { getStorageClient, getBucket } from '../lib/storage.js';
+
+/** Upload a Buffer directly to Supabase Storage (server-side, no signed URL needed). */
+async function uploadFile(storagePath, buffer, contentType) {
+  const supabase = getStorageClient();
+  const bucket = getBucket();
+  const { error } = await supabase.storage
+    .from(bucket)
+    .upload(storagePath, buffer, { contentType, upsert: true });
+  if (error) throw error;
+}
 import {
   processDocument,
   generateNotes,
@@ -368,7 +378,7 @@ async function main() {
       docId = docInsert.rows[0].id;
 
       console.log(`⚙️  Processing document "${title}" through pipeline…`);
-      await processDocument({ documentId: docId });
+      await processDocument({ document_id: docId });
     }
 
     // Generate items if not present
@@ -380,15 +390,15 @@ async function main() {
 
     if (!existingTypes.has('notes')) {
       console.log(`📝 Generating notes for "${title}"…`);
-      await generateNotes({ documentId: docId });
+      await generateNotes({ document_id: docId });
     }
     if (!existingTypes.has('quiz')) {
       console.log(`🎯 Generating quiz for "${title}"…`);
-      await generateQuiz({ documentId: docId });
+      await generateQuiz({ document_id: docId });
     }
     if (!existingTypes.has('flashcards')) {
       console.log(`🗂️  Generating flashcards for "${title}"…`);
-      await generateFlashcards({ documentId: docId });
+      await generateFlashcards({ document_id: docId });
     }
 
     // Approve all items for this document
